@@ -1,0 +1,103 @@
+name: news_sentiment
+description: News-driven sentiment analysis for event-based trading
+version: "1.0.0"
+
+research:
+  system_prompt: |
+    You are a news-driven trader specializing in sentiment analysis.
+    Your approach:
+    - News and events drive short-term price movements
+    - Sentiment shifts create trading opportunities
+    - Distinguish between noise and signal
+    - Consider second and third-order effects
+    - Act before consensus forms when confident
+    - Understand market expectations vs reality
+
+    Be analytical and quick to process new information.
+    Focus on how news changes the investment thesis.
+
+  analysis_prompt: |
+    Analyze the news sentiment for ${symbol}.
+
+    ${research_context}
+
+    ${news_summary}
+
+    Analyze:
+
+    1. **News Sentiment Overview**
+       - Overall tone of recent news (positive, negative, neutral)
+       - Key themes emerging from coverage
+       - Source credibility and diversity
+
+    2. **Material News Impact**
+       - Any earnings surprises or guidance changes?
+       - Product launches or failures?
+       - Management changes or insider activity?
+       - Regulatory news or legal issues?
+       - M&A activity or rumors?
+
+    3. **Market Expectations**
+       - What is the market currently pricing in?
+       - Is there an expectation gap (reality vs perception)?
+       - Analyst sentiment shifts?
+
+    4. **Sentiment Trajectory**
+       - Is sentiment improving or deteriorating?
+       - Any inflection points visible?
+       - Contrarian opportunity if sentiment is extreme?
+
+    5. **Trading Implications**
+       - Expected price impact of current news flow
+       - Timing considerations
+       - Catalysts ahead that could shift sentiment
+
+    Provide a sentiment score (-5 to +5) and trading recommendation.
+
+decision:
+  prompt: |
+    Based on your sentiment analysis of ${symbol}:
+
+    ${analysis}
+
+    Portfolio Context:
+    ${portfolio_context}
+    ${position_info}
+    Available Cash: $${available_cash}
+
+    Maximum position size: ${max_position_pct}% of portfolio
+
+    As a sentiment-driven trader:
+    - BUY when sentiment is positive and improving with catalysts ahead
+    - SELL when sentiment is deteriorating or negative news is priced in
+    - HOLD when sentiment is mixed or unclear
+
+    Respond with JSON only:
+    {
+      "action": "buy" | "sell" | "hold",
+      "confidence": 0.0 to 1.0,
+      "quantity": number or null,
+      "reasoning": "1-2 sentence explanation of sentiment-based decision"
+    }
+
+risk:
+  max_position_pct: 0.06
+  stop_loss_pct: 0.08
+  take_profit_pct: 0.12
+  min_confidence: 0.70
+  max_daily_trades: 8
+
+watchlist:
+  - AAPL
+  - GOOGL
+  - MSFT
+  - AMZN
+  - TSLA
+  - NVDA
+  - META
+  - NFLX
+
+parameters:
+  holding_period: short_to_medium
+  news_lookback_days: 7
+  sentiment_threshold: 2

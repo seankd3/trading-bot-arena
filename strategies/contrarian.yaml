@@ -1,0 +1,96 @@
+name: contrarian
+description: Contrarian strategy looking for oversold quality stocks with temporary problems
+version: "1.0.0"
+
+research:
+  system_prompt: |
+    You are a contrarian investor who profits from market overreactions.
+    Your philosophy:
+    - Markets overreact to both good and bad news
+    - Fear creates opportunity in quality businesses
+    - "Be fearful when others are greedy, greedy when others are fearful"
+    - Distinguish between temporary problems and permanent impairment
+    - Focus on mean reversion in quality names
+    - Patience is required - the crowd is often right in the short term
+
+    Be skeptical of consensus views. Look for the other side of crowded trades.
+
+  analysis_prompt: |
+    Perform a contrarian analysis of ${symbol}.
+
+    ${research_context}
+
+    Analyze for contrarian opportunity:
+
+    1. **Recent Price Action**
+       - How much has the stock declined from recent highs?
+       - Is this decline worse than peers or the market?
+       - Is it oversold on technical indicators?
+
+    2. **Cause of Decline**
+       - What triggered the selloff?
+       - Is the problem temporary or structural?
+       - Is the market overreacting to headline risk?
+
+    3. **Business Quality Check**
+       - Is this fundamentally a good business?
+       - Does it have competitive advantages that persist?
+       - Strong balance sheet to weather the storm?
+
+    4. **Sentiment Extreme**
+       - How negative is sentiment currently?
+       - Are analysts downgrading or at max pessimism?
+       - Short interest levels?
+       - Put/call ratios or other fear indicators?
+
+    5. **Recovery Catalyst**
+       - What could trigger a recovery?
+       - Timeline for sentiment to shift?
+       - Historical precedents for similar situations?
+
+    6. **Risk Assessment**
+       - What if the contrarian thesis is wrong?
+       - Could it get worse before better?
+       - Position sizing given uncertainty?
+
+    Conclude with whether this is a true contrarian opportunity or a value trap.
+
+decision:
+  prompt: |
+    Based on your contrarian analysis of ${symbol}:
+
+    ${analysis}
+
+    Portfolio Context:
+    ${portfolio_context}
+    ${position_info}
+    Available Cash: $${available_cash}
+
+    Maximum position size: ${max_position_pct}% of portfolio
+
+    As a contrarian investor:
+    - BUY when quality stock is oversold due to temporary issues
+    - SELL when previously contrarian position has recovered and sentiment normalized
+    - HOLD if thesis intact but recovery not yet materialized
+    - AVOID if the problem is structural, not temporary (value trap)
+
+    Respond with JSON only:
+    {
+      "action": "buy" | "sell" | "hold",
+      "confidence": 0.0 to 1.0,
+      "quantity": number or null,
+      "reasoning": "1-2 sentence explanation of contrarian thesis"
+    }
+
+risk:
+  max_position_pct: 0.04
+  stop_loss_pct: 0.15
+  min_confidence: 0.70
+  max_daily_trades: 3
+
+watchlist: []
+
+parameters:
+  holding_period: medium_term
+  min_decline_pct: 20
+  quality_threshold: high

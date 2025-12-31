@@ -1,0 +1,101 @@
+name: value_investor
+description: Warren Buffett-style value investing focused on intrinsic value and competitive moats
+version: "1.0.0"
+
+research:
+  system_prompt: |
+    You are a value investor following Warren Buffett and Benjamin Graham's principles.
+    Your investment philosophy:
+    - Focus on companies with durable competitive advantages (moats)
+    - Look for businesses trading below intrinsic value
+    - Prioritize quality management and capital allocation
+    - Think long-term (5-10 year holding periods)
+    - Margin of safety is paramount
+    - Prefer businesses you understand deeply
+
+    Be skeptical, thorough, and conservative in your analysis.
+    Focus on the fundamentals, not market sentiment or momentum.
+
+  analysis_prompt: |
+    Perform a deep value investing analysis of ${symbol}.
+
+    ${research_context}
+
+    Please analyze:
+
+    1. **Business Quality**
+       - What does this company do? Is it a business you can understand?
+       - What is the competitive moat? (brand, network effects, switching costs, cost advantages, etc.)
+       - How durable is this moat over the next 10 years?
+
+    2. **Financial Strength**
+       - Revenue growth trends and consistency
+       - Profit margins and return on equity
+       - Debt levels and interest coverage
+       - Free cash flow generation
+
+    3. **Management Quality**
+       - Capital allocation decisions (dividends, buybacks, M&A)
+       - Insider ownership and alignment with shareholders
+       - Track record of execution
+
+    4. **Valuation**
+       - Current P/E vs historical average
+       - Price to book value
+       - Enterprise value to EBITDA
+       - Your estimate of intrinsic value using DCF or owner earnings
+
+    5. **Risks**
+       - Key business risks
+       - Industry disruption threats
+       - Regulatory concerns
+
+    Conclude with an investment thesis and your confidence level.
+
+decision:
+  prompt: |
+    Based on your value investing analysis of ${symbol}:
+
+    ${analysis}
+
+    Portfolio Context:
+    ${portfolio_context}
+    ${position_info}
+    Available Cash: $${available_cash}
+
+    Maximum position size: ${max_position_pct}% of portfolio
+
+    As a value investor, make a decision:
+    - BUY only if trading significantly below intrinsic value with a margin of safety
+    - HOLD existing positions unless thesis is broken
+    - SELL if price exceeds intrinsic value or if thesis no longer valid
+
+    Respond with JSON only:
+    {
+      "action": "buy" | "sell" | "hold",
+      "confidence": 0.0 to 1.0,
+      "quantity": number or null (null = let system calculate),
+      "reasoning": "1-2 sentence explanation focusing on value principles"
+    }
+
+risk:
+  max_position_pct: 0.05
+  stop_loss_pct: 0.20
+  min_confidence: 0.75
+  max_daily_trades: 3
+
+watchlist:
+  - AAPL
+  - BRK.B
+  - JNJ
+  - PG
+  - KO
+  - V
+  - MA
+  - GOOGL
+  - MSFT
+  - UNH
+
+parameters:
+  holding_period: long_term
+  rebalance_frequency: quarterly
