@@ -83,6 +83,11 @@ class Settings(BaseSettings):
     @property
     def strategies_dir(self) -> Path:
         """Get the strategies directory path."""
+        # First check current working directory
+        cwd_strategies = Path.cwd() / "strategies"
+        if cwd_strategies.exists():
+            return cwd_strategies
+        # Fall back to package location
         return Path(__file__).parent.parent.parent.parent / "strategies"
 
     @property

@@ -1,11 +1,12 @@
 """News fetching and aggregation module."""
 
 import logging
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
+from email.utils import parsedate_to_datetime
 from typing import Any
 
-import aiohttp
-import feedparser
+import httpx
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
@@ -39,8 +40,6 @@ class NewsFetcher:
     # Free RSS feeds for financial news
     RSS_FEEDS = {
         "yahoo_finance": "https://finance.yahoo.com/news/rssindex",
-        "seeking_alpha": "https://seekingalpha.com/market_currents.xml",
-        "reuters_business": "https://www.reutersagency.com/feed/?best-topics=business-finance",
         "marketwatch": "http://feeds.marketwatch.com/marketwatch/topstories/",
         "cnbc": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
     }
@@ -48,17 +47,6 @@ class NewsFetcher:
     def __init__(self) -> None:
         """Initialize the news fetcher."""
         self.settings = get_settings()
-        self._session: aiohttp.ClientSession | None = None
-
-    async def __aenter__(self) -> "NewsFetcher":
-        """Async context manager entry."""
-        self._session = aiohttp.ClientSession()
-        return self
-
-    async def __aexit__(self, *args: Any) -> None:
-        """Async context manager exit."""
-        if self._session:
-            await self._session.close()
 
     def fetch_rss_sync(self, feed_name: str | None = None) -> list[NewsArticle]:
         """Synchronously fetch news from RSS feeds.
@@ -78,25 +66,73 @@ class NewsFetcher:
 
         for source, url in feeds_to_fetch.items():
             try:
-                feed = feedparser.parse(url)
-                for entry in feed.entries[:10]:  # Limit to 10 per feed
-                    published = None
-                    if hasattr(entry, "published_parsed") and entry.published_parsed:
-                        published = datetime(*entry.published_parsed[:6])
+                response = httpx.get(url, timeout=10, follow_redirects=True)
+                response.raise_for_status()
 
-                    articles.append(
-                        NewsArticle(
-                            title=entry.get("title", ""),
-                            summary=self._clean_html(entry.get("summary", "")),
-                            source=source,
-                            url=entry.get("link", ""),
-                            published=published,
-                        )
+                # Parse RSS/XML
+                root = ET.fromstring(response.content)
+
+                # Handle both RSS and Atom feeds
+                items = root.findall(".//item") or root.findall(
+                    ".//{http://www.w3.org/2005/Atom}entry"
+                )
+
+                for item in items[:10]:  # Limit to 10 per feed
+                    title = self._get_text(item, "title") or self._get_text(
+                        item, "{http://www.w3.org/2005/Atom}title"
                     )
+                    link = self._get_text(item, "link") or self._get_attr(
+                        item, "{http://www.w3.org/2005/Atom}link", "href"
+                    )
+                    description = (
+                        self._get_text(item, "description")
+                        or self._get_text(item, "{http://www.w3.org/2005/Atom}summary")
+                        or ""
+                    )
+                    pub_date = self._get_text(item, "pubDate") or self._get_text(
+                        item, "{http://www.w3.org/2005/Atom}published"
+                    )
+
+                    published = None
+                    if pub_date:
+                        try:
+                            published = parsedate_to_datetime(pub_date).replace(tzinfo=None)
+                        except Exception:
+                            try:
+                                published = datetime.fromisoformat(
+                                    pub_date.replace("Z", "+00:00")
+                                ).replace(tzinfo=None)
+                            except Exception:
+                                pass
+
+                    if title:
+                        articles.append(
+                            NewsArticle(
+                                title=title,
+                                summary=self._clean_html(description),
+                                source=source,
+                                url=link or "",
+                                published=published,
+                            )
+                        )
             except Exception as e:
                 logger.warning(f"Failed to fetch RSS feed {source}: {e}")
 
         return articles
+
+    def _get_text(self, element: ET.Element, tag: str) -> str | None:
+        """Get text content of a child element."""
+        child = element.find(tag)
+        if child is not None and child.text:
+            return child.text.strip()
+        return None
+
+    def _get_attr(self, element: ET.Element, tag: str, attr: str) -> str | None:
+        """Get attribute of a child element."""
+        child = element.find(tag)
+        if child is not None:
+            return child.get(attr)
+        return None
 
     def fetch_for_symbol_sync(
         self,
@@ -117,21 +153,24 @@ class NewsFetcher:
                 logger.warning(f"NewsAPI fetch failed: {e}")
 
         # Supplement with RSS feeds
-        rss_articles = self.fetch_rss_sync()
+        try:
+            rss_articles = self.fetch_rss_sync()
 
-        # Filter RSS articles for symbol mentions
-        symbol_lower = symbol.lower()
-        for article in rss_articles:
-            text = f"{article.title} {article.summary}".lower()
-            if symbol_lower in text:
-                article.symbols.append(symbol)
-                articles.append(article)
+            # Filter RSS articles for symbol mentions
+            symbol_lower = symbol.lower()
+            for article in rss_articles:
+                text = f"{article.title} {article.summary}".lower()
+                if symbol_lower in text:
+                    article.symbols.append(symbol)
+                    articles.append(article)
+        except Exception as e:
+            logger.warning(f"RSS fetch failed: {e}")
 
         # Deduplicate by URL
         seen_urls: set[str] = set()
         unique_articles = []
         for article in articles:
-            if article.url not in seen_urls:
+            if article.url and article.url not in seen_urls:
                 seen_urls.add(article.url)
                 unique_articles.append(article)
 
@@ -145,8 +184,6 @@ class NewsFetcher:
 
     def _fetch_newsapi_sync(self, symbol: str, days: int) -> list[NewsArticle]:
         """Fetch from NewsAPI synchronously."""
-        import httpx
-
         api_key = self.settings.news_api_key.get_secret_value()
         from_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
