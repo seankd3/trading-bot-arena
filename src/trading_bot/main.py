@@ -24,6 +24,9 @@ console = Console()
 strategies_app = typer.Typer(help="Manage trading strategies")
 app.add_typer(strategies_app, name="strategies")
 
+portfolio_app = typer.Typer(help="Autonomous portfolio management")
+app.add_typer(portfolio_app, name="portfolio")
+
 
 def setup_logging(level: str = "INFO") -> None:
     """Configure logging."""
@@ -422,6 +425,156 @@ def quick(
 
     rprint(Panel(response.content, title=f"Analysis: {symbol}", border_style="green"))
     rprint(f"\n[dim]Tokens: {response.input_tokens} in, {response.output_tokens} out[/dim]")
+
+
+@portfolio_app.command("analyze")
+def portfolio_analyze(
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Show detailed analysis"),
+    ] = False,
+) -> None:
+    """Analyze portfolio with GPT-5 deep research."""
+    setup_logging("DEBUG" if verbose else "INFO")
+
+    from trading_bot.portfolio import PortfolioManager
+
+    rprint("[bold blue]GPT-5 Deep Research Portfolio Analysis[/bold blue]\n")
+
+    try:
+        manager = PortfolioManager()
+
+        with console.status("[bold blue]Running GPT-5 deep research analysis..."):
+            analysis = manager.analyze_portfolio()
+
+        # Display results
+        health_color = "green" if analysis.health_score >= 70 else "yellow" if analysis.health_score >= 50 else "red"
+        rprint(f"[{health_color}]Portfolio Health Score: {analysis.health_score}/100[/{health_color}]")
+        rprint(f"\n[bold]Summary:[/bold] {analysis.summary}")
+        rprint(f"\n[bold]Risk Assessment:[/bold] {analysis.risk_assessment}")
+        rprint(f"\n[bold]Market Outlook:[/bold] {analysis.market_outlook}")
+
+        if analysis.recommendations:
+            rprint("\n[bold]Trade Recommendations:[/bold]")
+            table = Table()
+            table.add_column("Symbol", style="cyan")
+            table.add_column("Action")
+            table.add_column("Confidence")
+            table.add_column("Urgency")
+            table.add_column("Reasoning")
+
+            for rec in analysis.recommendations:
+                action_style = {"buy": "green", "sell": "red", "hold": "yellow"}.get(rec.action, "white")
+                table.add_row(
+                    rec.symbol,
+                    f"[{action_style}]{rec.action.upper()}[/{action_style}]",
+                    f"{rec.confidence:.2f}",
+                    rec.urgency,
+                    rec.reasoning[:60] + "..." if len(rec.reasoning) > 60 else rec.reasoning,
+                )
+            console.print(table)
+
+        if analysis.watchlist_additions:
+            rprint(f"\n[green]Add to watchlist:[/green] {', '.join(analysis.watchlist_additions)}")
+        if analysis.watchlist_removals:
+            rprint(f"[red]Remove from watchlist:[/red] {', '.join(analysis.watchlist_removals)}")
+
+    except Exception as e:
+        rprint(f"[red]Analysis failed:[/red] {e}")
+        raise typer.Exit(1)
+
+
+@portfolio_app.command("manage")
+def portfolio_manage(
+    interval: Annotated[
+        int,
+        typer.Option("--interval", "-i", help="Minutes between analyses"),
+    ] = 60,
+    auto_execute: Annotated[
+        bool,
+        typer.Option("--auto-execute", help="Automatically execute high-confidence trades"),
+    ] = False,
+    min_confidence: Annotated[
+        float,
+        typer.Option("--min-confidence", help="Minimum confidence for auto-execution"),
+    ] = 0.8,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Don't execute actual trades"),
+    ] = True,
+) -> None:
+    """Run continuous autonomous portfolio management."""
+    setup_logging("INFO")
+
+    from trading_bot.portfolio import PortfolioManager
+
+    rprint("[bold blue]GPT-5 Autonomous Portfolio Manager[/bold blue]")
+    rprint(f"Interval: {interval} minutes")
+    rprint(f"Auto-execute: {auto_execute} (min confidence: {min_confidence})")
+    rprint(f"Mode: {'DRY RUN' if dry_run else '[red]LIVE TRADING[/red]'}")
+    rprint()
+
+    if auto_execute and not dry_run:
+        confirm = typer.confirm("Auto-execute is enabled with LIVE trading. Are you sure?")
+        if not confirm:
+            raise typer.Exit(0)
+
+    manager = PortfolioManager(dry_run=dry_run)
+    manager.run_continuous(
+        interval_minutes=interval,
+        auto_execute=auto_execute,
+        min_confidence=min_confidence,
+    )
+
+
+@portfolio_app.command("execute")
+def portfolio_execute(
+    min_confidence: Annotated[
+        float,
+        typer.Option("--min-confidence", help="Minimum confidence to execute"),
+    ] = 0.75,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Don't execute actual trades"),
+    ] = True,
+) -> None:
+    """Execute recommendations from last analysis."""
+    setup_logging("INFO")
+
+    from trading_bot.portfolio import PortfolioManager
+
+    manager = PortfolioManager(dry_run=dry_run)
+
+    # Run analysis first
+    rprint("[bold blue]Running analysis before execution...[/bold blue]")
+    with console.status("[bold blue]Analyzing portfolio..."):
+        analysis = manager.analyze_portfolio()
+
+    # Show recommendations
+    if not analysis.recommendations:
+        rprint("[yellow]No trade recommendations[/yellow]")
+        return
+
+    rprint("\n[bold]Recommendations to execute:[/bold]")
+    for rec in analysis.recommendations:
+        if rec.confidence >= min_confidence and rec.action != "hold":
+            rprint(f"  {rec.action.upper()} {rec.symbol} (confidence: {rec.confidence:.2f})")
+
+    if dry_run:
+        rprint("\n[yellow]DRY RUN - No trades will be executed[/yellow]")
+    else:
+        confirm = typer.confirm("\nExecute these trades?")
+        if not confirm:
+            raise typer.Exit(0)
+
+    # Execute
+    results = manager.execute_recommendations(analysis, min_confidence=min_confidence)
+
+    for r in results:
+        if r.get("success"):
+            rprint(f"[green]Executed:[/green] {r['action']} {r['symbol']}")
+        else:
+            rprint(f"[red]Failed:[/red] {r['symbol']} - {r.get('error')}")
 
 
 def main() -> None:

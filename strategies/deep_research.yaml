@@ -1,0 +1,122 @@
+name: deep_research
+description: GPT-5 powered deep research strategy with comprehensive multi-factor analysis
+version: "2.0.0"
+
+research:
+  system_prompt: |
+    You are a GPT-5 powered deep research analyst with comprehensive market knowledge.
+    Your analysis capabilities:
+    - Multi-factor fundamental analysis (financials, management, moat, valuation)
+    - Technical pattern recognition and momentum analysis
+    - Sentiment analysis from news and market behavior
+    - Macro-economic context and sector rotation insights
+    - Risk assessment and position sizing recommendations
+
+    Be thorough, data-driven, and actionable in your recommendations.
+    Think step-by-step through complex investment decisions.
+    Prioritize capital preservation while seeking asymmetric opportunities.
+
+  analysis_prompt: |
+    Conduct deep research analysis on ${symbol}.
+
+    ${research_context}
+
+    ## COMPREHENSIVE ANALYSIS REQUIRED
+
+    ### 1. BUSINESS FUNDAMENTALS
+    - What does the company do? Core revenue drivers?
+    - Competitive positioning and market share
+    - Management quality and capital allocation history
+    - Moat durability (brand, network effects, switching costs, scale)
+
+    ### 2. FINANCIAL HEALTH
+    - Revenue and earnings trends (growth, consistency)
+    - Profit margins vs industry peers
+    - Balance sheet strength (debt, cash, current ratio)
+    - Free cash flow generation and uses
+    - Return on invested capital (ROIC)
+
+    ### 3. VALUATION ASSESSMENT
+    - P/E, P/S, EV/EBITDA vs historical and peers
+    - DCF intrinsic value estimate
+    - Price vs 52-week range
+    - Margin of safety calculation
+
+    ### 4. TECHNICAL PICTURE
+    - Trend direction and strength
+    - Key support and resistance levels
+    - Volume patterns
+    - Momentum indicators
+
+    ### 5. SENTIMENT & CATALYSTS
+    - Recent news sentiment (positive/negative)
+    - Upcoming catalysts (earnings, products, regulatory)
+    - Analyst sentiment shifts
+    - Insider activity
+
+    ### 6. RISK FACTORS
+    - Business-specific risks
+    - Sector and macro risks
+    - Valuation risk
+    - Execution risk
+
+    Provide a comprehensive investment thesis with confidence level.
+
+decision:
+  prompt: |
+    Based on your deep research of ${symbol}:
+
+    ${analysis}
+
+    Portfolio Context:
+    ${portfolio_context}
+    ${position_info}
+    Available Cash: $${available_cash}
+
+    Maximum position size: ${max_position_pct}% of portfolio
+
+    As a GPT-5 powered portfolio manager, make your decision:
+
+    Consider:
+    1. Risk-adjusted return potential
+    2. Portfolio diversification impact
+    3. Position sizing based on conviction
+    4. Entry timing and price levels
+
+    Respond with JSON only:
+    {
+      "action": "buy" | "sell" | "hold",
+      "confidence": 0.0 to 1.0,
+      "quantity": number or null,
+      "target_price": number or null,
+      "stop_loss": number or null,
+      "time_horizon": "short" | "medium" | "long",
+      "reasoning": "detailed explanation of decision"
+    }
+
+risk:
+  max_position_pct: 0.08
+  stop_loss_pct: 0.12
+  take_profit_pct: 0.25
+  min_confidence: 0.75
+  max_daily_trades: 5
+
+watchlist:
+  - AAPL
+  - MSFT
+  - GOOGL
+  - AMZN
+  - NVDA
+  - META
+  - TSLA
+  - BRK.B
+  - V
+  - JNJ
+  - UNH
+  - JPM
+
+parameters:
+  model: gpt-5
+  research_depth: comprehensive
+  holding_period: flexible
+  rebalance_frequency: weekly

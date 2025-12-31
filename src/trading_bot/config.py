@@ -58,6 +58,7 @@ class Settings(BaseSettings):
         default="claude-sonnet-4-20250514", description="Anthropic model to use"
     )
     openai_model: str = Field(default="gpt-4o", description="OpenAI model to use")
+    openai_fast_model: str = Field(default="gpt-4o", description="OpenAI fast model for quick tasks")
 
     # News API
     news_api_key: SecretStr | None = Field(default=None, description="NewsAPI key")
