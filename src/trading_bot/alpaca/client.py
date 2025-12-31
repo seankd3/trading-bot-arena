@@ -40,16 +40,34 @@ class AlpacaClient:
         api_key = settings.alpaca_api_key.get_secret_value()
         secret_key = settings.alpaca_secret_key.get_secret_value()
 
-        self.trading_client = TradingClient(
-            api_key=api_key,
-            secret_key=secret_key,
-            paper=settings.alpaca_paper,
-        )
+        # Build trading client kwargs
+        trading_kwargs: dict[str, Any] = {
+            "api_key": api_key,
+            "secret_key": secret_key,
+            "paper": settings.alpaca_paper,
+        }
+        
+        # Add custom base URL if provided
+        if settings.alpaca_base_url:
+            trading_kwargs["url_override"] = settings.alpaca_base_url
+            logger.info(f"Using custom Alpaca base URL: {settings.alpaca_base_url}")
 
-        self.data_client = StockHistoricalDataClient(
-            api_key=api_key,
-            secret_key=secret_key,
-        )
+        self.trading_client = TradingClient(**trading_kwargs)
+
+        # Build data client kwargs
+        data_kwargs: dict[str, Any] = {
+            "api_key": api_key,
+            "secret_key": secret_key,
+        }
+        
+        # Data client uses a different URL pattern, adjust if base URL is provided
+        if settings.alpaca_base_url:
+            # Convert trading URL to data URL (e.g., paper-api -> data.alpaca)
+            data_url = settings.alpaca_base_url.replace("paper-api.alpaca.markets", "data.alpaca.markets")
+            data_kwargs["url_override"] = data_url
+            logger.info(f"Using custom data base URL: {data_url}")
+
+        self.data_client = StockHistoricalDataClient(**data_kwargs)
 
         self._paper = settings.alpaca_paper
         logger.info(f"Alpaca client initialized (paper={self._paper})")

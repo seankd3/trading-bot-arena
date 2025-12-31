@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     alpaca_api_key: SecretStr = Field(description="Alpaca API key")
     alpaca_secret_key: SecretStr = Field(description="Alpaca secret key")
     alpaca_paper: bool = Field(default=True, description="Use paper trading")
+    alpaca_base_url: str | None = Field(default=None, description="Alpaca API base URL (optional)")
 
     # LLM Configuration
     llm_provider: LLMProvider = Field(
